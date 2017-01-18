@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# Usage:
+#
+#     ./install-deps   PREFIX   SET_BASH
+#     ./install-deps   PREFIX
+#
+# where PREFIX is the PATH where the external libraries (dependencies) will be
+# installed (for example: ~/devel/control/install)
+#
+# If SET_BASH is used, the pkg-config path is added to the .bashrc (needed to
+# be run at least the first time)
+
+
+# Add the path for pkg-config. It is important for it to be at the end of the
+# .bashrc (so that it uses these packages and not others from the system, such
+# as rbdl provided by ros)
+if [ "$#" -eq 2 ]; then
+    pkg1=$(readlink -m "$1/share/pkgconfig")
+    pkg2=$(readlink -m "$1/lib/pkgconfig") 
+    echo "# Path for Eigen, qpOASES, rbdl and pinocchio" >> ~/.bashrc
+    echo PKG_CONFIG_PATH=$pkg1:$pkg2:\$PKG_CONFIG_PATH >> ~/.bashrc
+fi
+
+# # Install Eigen
+# cd eigen-3.2.8; mkdir -p build; cd build
+# cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
+# echo "$(tput setaf 2)======================"
+# echo "Installing Eigen 3.2.8"
+# echo "======================$(tput sgr 0)"
+# make; make install
+# cd ../..
+
+# # Install qpOASES
+# cd qpOASES-3.2.0; mkdir -p build; cd build
+# cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
+# echo "$(tput setaf 2)"
+# echo "======================================"
+# echo "Compiling and Installing qpOASES 3.2.0"
+# echo "======================================"
+# echo "$(tput sgr 0)"
+# make; make install
+# cd ../..
+
+# Install rbdl
+cd src/rbdl; mkdir -p build; cd build
+cmake .. -DRBDL_BUILD_ADDON_URDFREADER=ON -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
+echo "$(tput setaf 2)==================================="
+echo "Compiling and Installing rbdl 2.5.0"
+echo "===================================$(tput sgr 0)"
+make; make install
+cd ../../..
+
+# Install pinocchio
+cd src/pinocchio; mkdir -p build; cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
+echo "$(tput setaf 2)==================================="
+echo "Compiling and Installing pinocchio"
+echo "===================================$(tput sgr 0)"
+make; make install
+cd ../..
