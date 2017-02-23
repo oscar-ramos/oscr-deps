@@ -50,19 +50,6 @@ Changes to the original RBDL package are:
   + Add -lrbdl_urdfreader in line 11 of rbdl.pc.cmake (Libs) since urdf support
     is essential for OSCR
 
-#  THIS IS CURRENTLY NOT DONE
-#  + TODO: In CMakeLists.txt, PkgConfig was added to find the newest Eigen
-#   (removed line 40, added lines 41, 42) - TODO: Check if it works fine 
-#   without this change.
-#
-# + The urdf parsing components are forced to use the ones included as
-#   thirdparty in rbdl. The urdf files provided by catkin are enforced to be
-#   ignored (they caused some problems in the installation directory and are
-#   dependent on ROS versions): lines 18-22 and 24 were commented out in
-#   addons/urdfreader/CMakeLists.txt
-#  THIS IS CURRENTLY NOT DONE
-
-
 Pinocchio
 =========
 
@@ -82,3 +69,26 @@ Changes to the original Pinocchio package are:
 
   + Commented out line 179 in cmake/base.cmake to avoid documentation issues
 
+qpOASES-3.2.0
+=============
+
+This software package can be obtained from: 
+    https://projects.coin-or.org/qpOASES/
+
+The version that is currently used is 3.2.0
+
+Changes to the original qpOASES package are:
+
+  + The following folders have been removed (they are not used by this
+    project): examples, doc, testing, interfaces. The following files have been
+    removed: *.txt (except CMakeLists.txt), make*, Makefile
+
+  + The examples are not build: the lines to compile them have been commented
+    out in CMakeLists.txt (lines 143-146)
+    
+  + The library has been changed to SHARED: line 104 in CMakeLists.txt has been
+    commented out and line 105 has been added
+    
+  + For package managing, pkg-config support was added: a new folder called
+    pkg-config now contains CMakeLists.txt and qpoases.pc.cmake. Line 149 was
+    added in the main CMakeLists.txt

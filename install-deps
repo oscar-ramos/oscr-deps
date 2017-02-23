@@ -16,31 +16,10 @@
 # .bashrc (so that it uses these packages and not others from the system, such
 # as rbdl provided by ros)
 if [ "$#" -eq 2 ]; then
-    pkg1=$(readlink -m "$1/share/pkgconfig")
-    pkg2=$(readlink -m "$1/lib/pkgconfig") 
-    echo "# Path for Eigen, qpOASES, rbdl and pinocchio" >> ~/.bashrc
-    echo PKG_CONFIG_PATH=$pkg1:$pkg2:\$PKG_CONFIG_PATH >> ~/.bashrc
+    pkg1=$(readlink -m "$1/lib/pkgconfig") 
+    echo "# Path for oscr, qpOASES, rbdl and pinocchio" >> ~/.bashrc
+    echo PKG_CONFIG_PATH=$pkg1:\$PKG_CONFIG_PATH >> ~/.bashrc
 fi
-
-# # Install Eigen
-# cd eigen-3.2.8; mkdir -p build; cd build
-# cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
-# echo "$(tput setaf 2)======================"
-# echo "Installing Eigen 3.2.8"
-# echo "======================$(tput sgr 0)"
-# make; make install
-# cd ../..
-
-# # Install qpOASES
-# cd qpOASES-3.2.0; mkdir -p build; cd build
-# cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
-# echo "$(tput setaf 2)"
-# echo "======================================"
-# echo "Compiling and Installing qpOASES 3.2.0"
-# echo "======================================"
-# echo "$(tput sgr 0)"
-# make; make install
-# cd ../..
 
 # Install rbdl
 cd src/rbdl; mkdir -p build; cd build
@@ -58,4 +37,14 @@ echo "$(tput setaf 2)==================================="
 echo "Compiling and Installing pinocchio"
 echo "===================================$(tput sgr 0)"
 make; make install
-cd ../..
+cd ../../..
+
+# Install qpOASES
+cd src/qpOASES-3.2.0; mkdir -p build; cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
+echo "$(tput setaf 2)==================================="
+echo "Compiling and Installing qpOASES 3.2.0"
+echo "======================================"
+echo "$(tput sgr 0)"
+make; make install
+cd ../../..
