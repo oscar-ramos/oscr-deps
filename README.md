@@ -1,5 +1,5 @@
 *oscr-deps* - Third-party (external) software needed for the
-[*oscr*](https://bitbucket.org/oscarefrain/oscr) library
+[*oscr*](https://github.com/oscar-ramos/oscr) library
 
 Introduction
 ============
