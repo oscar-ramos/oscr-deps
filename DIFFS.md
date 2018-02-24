@@ -25,6 +25,9 @@ Changes to the original RBDL package are:
   + Add -lrbdl_urdfreader in line 11 of rbdl.pc.cmake (Libs) since urdf support
     is essential for OSCR
 
+  + Line 14 of addons/urdfreader/urdfreader.cc was commented out since it
+    causes problems when ros.h is not found (e.g. with ros kinetic)
+
 Pinocchio
 =========
 
