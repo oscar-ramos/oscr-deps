@@ -18,7 +18,7 @@
 if [ "$#" -eq 2 ]; then
     pkg1=$(readlink -m "$1/lib/pkgconfig") 
     echo "# Path for oscr, qpOASES, rbdl and pinocchio" >> ~/.bashrc
-    echo PKG_CONFIG_PATH=$pkg1:\$PKG_CONFIG_PATH >> ~/.bashrc
+    echo "export PKG_CONFIG_PATH=$pkg1:\$PKG_CONFIG_PATH" >> ~/.bashrc
 fi
 
 # Install rbdl
