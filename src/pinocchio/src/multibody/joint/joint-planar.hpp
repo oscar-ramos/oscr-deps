@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015-2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -19,6 +19,7 @@
 #ifndef __se3_joint_planar_hpp__
 #define __se3_joint_planar_hpp__
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/math/sincos.hpp"
@@ -29,9 +30,6 @@
 
 namespace se3
 {
-
-  struct JointDataPlanar;
-  struct JointModelPlanar;
 
   struct MotionPlanar;
   template <>
@@ -191,6 +189,20 @@ namespace se3
       return X_subspace;
     }
 
+    DenseBase variation(const Motion & m) const
+    {
+      const Motion::ConstLinear_t v = m.linear();
+      const Motion::ConstAngular_t w = m.angular();
+      DenseBase res(DenseBase::Zero());
+      
+      res(0,1) = -w[2]; res(0,2) = v[1];
+      res(1,0) = w[2]; res(1,2) = -v[0];
+      res(2,0) = -w[1]; res(2,1) = w[0];
+      res(3,2) = w[1];
+      res(4,2) = -w[0];
+      
+      return res;
+    }
   }; // struct ConstraintPlanar
 
   template<typename D>
@@ -269,7 +281,7 @@ namespace se3
   struct traits<JointPlanar>
   {
     enum {
-      NQ = 3,
+      NQ = 4,
       NV = 3
     };
     typedef double Scalar;
@@ -330,7 +342,8 @@ namespace se3
     {
       EIGEN_STATIC_ASSERT_SAME_VECTOR_SIZE(ConfigVector_t,V);
       
-      double c_theta,s_theta; SINCOS (q_joint(2), &s_theta, &c_theta);
+      const double& c_theta = q_joint(2),
+                    s_theta = q_joint(3);
       
       M.rotation().topLeftCorner<2,2>() << c_theta, -s_theta, s_theta, c_theta;
       M.translation().head<2>() = q_joint.template head<2>();
@@ -341,7 +354,8 @@ namespace se3
     {
       Eigen::VectorXd::ConstFixedSegmentReturnType<NQ>::Type & q = qs.segment<NQ>(idx_q ());
 
-      double c_theta,s_theta; SINCOS (q(2), &s_theta, &c_theta);
+      const double& c_theta = q(2),
+                    s_theta = q(3);
 
       data.M.rotation ().topLeftCorner <2,2> () << c_theta, -s_theta, s_theta, c_theta;
       data.M.translation ().head <2> () = q.head<2> ();
@@ -353,9 +367,10 @@ namespace se3
                const Eigen::VectorXd & vs ) const
     {
       Eigen::VectorXd::ConstFixedSegmentReturnType<NQ>::Type & q = qs.segment<NQ> (idx_q ());
-      Eigen::VectorXd::ConstFixedSegmentReturnType<NV>::Type & q_dot = vs.segment<NQ> (idx_v ());
+      Eigen::VectorXd::ConstFixedSegmentReturnType<NV>::Type & q_dot = vs.segment<NV> (idx_v ());
 
-      double c_theta,s_theta; SINCOS (q(2), &s_theta, &c_theta);
+      const double& c_theta = q(2),
+                    s_theta = q(3);
 
       data.M.rotation ().topLeftCorner <2,2> () << c_theta, -s_theta, s_theta, c_theta;
       data.M.translation ().head <2> () = q.head<2> ();
@@ -393,14 +408,14 @@ namespace se3
       typedef Eigen::Matrix<double, 2, 2> Matrix22;
       typedef Eigen::Matrix<double, 2, 1> Vector2;
 
-      double c0,s0; SINCOS (q(2), &s0, &c0);
+      const double& c0 = q(2), s0 = q(3);
       Matrix22 R0;
       R0 << c0, -s0, s0, c0;
       
       const double& t = q_dot[2];
       const double theta = std::fabs(t);
 
-      ConfigVector_t res(q);
+      ConfigVector_t res;
       if(theta > 1e-14)
       {
         // q_dot = [ x, y, t ]
@@ -412,8 +427,8 @@ namespace se3
         // else    : S = -Sp
         // S / t = Sp / |t|
         // S * S = - I2
-        // R = I2 + ( 1 - ct) / |t| * S + ( 1 - st / t ) * S * S
-        //   =      ( 1 - ct) / |t| * S +       st / t   * I2
+        // R = I2 + ( 1 - ct) / |t| * S + ( 1 - st / |t| ) * S * S
+        //   =      ( 1 - ct) / |t| * S +       st / |t|   * I2
         //
         // Ru = exp3 (w)
         // tu = R * v = (1 - ct) / |t| * S * v + st / t * v
@@ -421,21 +436,25 @@ namespace se3
         // M0 * Mu = ( R0 * Ru, R0 * tu + t0 )
 
         Eigen::VectorXd::ConstFixedSegmentReturnType<2>::Type v = vs.segment<2>(idx_v());
-        double ct,st; SINCOS (theta, &st, &ct);
+        Eigen::Matrix<Scalar,2,1> cst;
+        SINCOS (t, &cst[1], &cst[0]);
         const double inv_theta = 1/theta;
-        const double c_coeff = (1.-ct) * inv_theta;
-        const double s_coeff = st * inv_theta;
+        const double c_coeff = (1.-cst[0]) * inv_theta;
+        const double s_coeff = std::fabs(cst[1]) * inv_theta;
         const Vector2 Sp_v (-v[1], v[0]);
 
-        if (t > 0) res.head<2>() += R0 * (s_coeff * v + c_coeff * Sp_v);
-        else       res.head<2>() += R0 * (s_coeff * v - c_coeff * Sp_v);
-        res[2] += t;
+        if (t > 0) res.head<2>() = q.head<2>() + R0 * (s_coeff * v + c_coeff * Sp_v);
+        else       res.head<2>() = q.head<2>() + R0 * (s_coeff * v - c_coeff * Sp_v);
+        res.tail<2>() = R0 * cst;
         return res;
       }
       else
       {
-        res.head<2>() += R0*q_dot.head<2>();
-        res[2] += t;
+        // cos(t) ~ 1 - t^2 / 2
+        // sin(t) ~ t
+        res.head<2>() = q.head<2>() + R0*q_dot.head<2>();
+        res(2) = c0 * 1 - s0 * t;
+        res(3) = s0 * 1 + c0 * t;
       }
       
       return res;
@@ -459,14 +478,17 @@ namespace se3
 
     ConfigVector_t random_impl() const
     { 
-      ConfigVector_t result(ConfigVector_t::Random());
+      ConfigVector_t result;
+      result.head<2>().setRandom();
+      const Scalar angle = PI * (-1 + 2 * ((Scalar)rand()) / RAND_MAX);
+      SINCOS(angle, &result[3], &result[2]);
       return result;
     } 
 
     ConfigVector_t randomConfiguration_impl(const ConfigVector_t & lower_pos_limit, const ConfigVector_t & upper_pos_limit ) const throw (std::runtime_error)
     { 
       ConfigVector_t result;
-      for (int i = 0; i < result.size(); ++i)
+      for (int i = 0; i < 2; ++i)
       {
         if(lower_pos_limit[i] == -std::numeric_limits<double>::infinity() || 
             upper_pos_limit[i] == std::numeric_limits<double>::infinity() )
@@ -478,6 +500,8 @@ namespace se3
         }
         result[i] = lower_pos_limit[i] + ( upper_pos_limit[i] - lower_pos_limit[i]) * rand()/RAND_MAX;
       }
+      const Scalar angle = PI * (-1 + 2 * ((Scalar)rand()) / RAND_MAX);
+      SINCOS(angle, &result[3], &result[2]);
       return result;
     } 
 
@@ -493,7 +517,7 @@ namespace se3
       
       TangentVector_t res;
       res.head<2>() = nu.linear().head<2>();
-      res(2) = q_1(2) - q_0(2);
+      res(2) = nu.angular()(2);
       return res;
     } 
 
@@ -501,11 +525,16 @@ namespace se3
     { 
       return difference_impl(q0, q1).norm();
     }
+          
+    void normalize_impl(Eigen::VectorXd& q) const
+    {
+      q.segment<NQ>(idx_q()).tail<2>().normalize();
+    }
 
     ConfigVector_t neutralConfiguration_impl() const
     { 
       ConfigVector_t q;
-      q << 0, 0, 0;
+      q << 0, 0, 1, 0;
       return q;
     } 
 

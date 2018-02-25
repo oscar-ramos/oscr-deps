@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 CNRS
+// Copyright (c) 2015-2017 CNRS
 //
 // This file is part of Pinocchio
 // Pinocchio is free software: you can redistribute it
@@ -17,8 +17,12 @@
 
 #ifndef __se3_skew_hpp__
 #define __se3_skew_hpp__
+
+#include "pinocchio/macros.hpp"
+
 namespace se3
 {
+  
   ///
   /// \brief Computes the skew representation of a given 3D vector,
   ///        i.e. the antisymmetric matrix representation of the cross product operator.
@@ -28,16 +32,17 @@ namespace se3
   /// \return The skew matrix representation of v.
   ///
   template <typename D>
-  inline Eigen::Matrix<typename D::Scalar,3,3,D::Options>
+  inline Eigen::Matrix<typename D::Scalar,3,3,Eigen::internal::plain_matrix_type<D>::type::Options>
   skew(const Eigen::MatrixBase<D> & v)
   {
     EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(D,3);
-    Eigen::Matrix<typename D::Scalar,3,3,D::Options> m;
+    Eigen::Matrix<typename D::Scalar,3,3,Eigen::internal::plain_matrix_type<D>::type::Options> m;
     m(0,0) =  0   ;  m(0,1) = -v[2];   m(0,2) =  v[1];
     m(1,0) =  v[2];  m(1,1) =  0   ;   m(1,2) = -v[0];
     m(2,0) = -v[1];  m(2,1) =  v[0];   m(2,2) =  0   ;
     return m;
   }
+
   
   ///
   /// \brief Inverse operation related to skew. From a given skew-symmetric matrix M
@@ -72,19 +77,45 @@ namespace se3
     m(2,0) = - m(0,2);  m(2,1) =  - m(1,2);   m(2,2) =  0;
     return m;
   }
+  
+  ///
+  /// \brief Computes the square cross product linear operator C(u,v) such that for any vector w, \f$ u \times ( v \times w ) = C(u,v) w \f$.
+  ///
+  /// \param[in] u A 3 dimensional vector.
+  /// \param[in] v A 3 dimensional vector.
+  ///
+  /// \return The square cross product C matrix.
+  ///
+  template <typename D1, typename D2>
+  inline Eigen::Matrix<typename D1::Scalar,3,3,Eigen::internal::plain_matrix_type<D1>::type::Options>
+  skewSquare(const Eigen::MatrixBase<D1> & u, const Eigen::MatrixBase<D2> & v)
+  {
+    EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(D1,3);
+    EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(D2,3);
+    
+    typedef Eigen::DiagonalMatrix<typename D1::Scalar,3> DiagonalMatrix;
+    
+    const typename D1::Scalar udotv(u.dot(v));
+    Eigen::Matrix<typename D1::Scalar,3,3,Eigen::internal::plain_matrix_type<D1>::type::Options> res(v*u.transpose());
+    res -= DiagonalMatrix(udotv,udotv,udotv);
+    
+    return res;
+  }
 
   template <typename V,typename M>
-  inline Eigen::Matrix<typename M::Scalar,3,M::ColsAtCompileTime,M::Options>
+  inline Eigen::Matrix<typename M::Scalar,3,M::ColsAtCompileTime,Eigen::internal::plain_matrix_type<M>::type::Options>
   cross(const Eigen::MatrixBase<V> & v,
 	const Eigen::MatrixBase<M> & m)
   {
     EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(V,3);
 
-    Eigen::Matrix<typename M::Scalar,3,M::ColsAtCompileTime,M::Options> res (3,m.cols());
+    Eigen::Matrix<typename M::Scalar,3,M::ColsAtCompileTime,Eigen::internal::plain_matrix_type<M>::type::Options> res (3,m.cols());
     res.row(0) = v[1]*m.row(2) - v[2]*m.row(1);
     res.row(1) = v[2]*m.row(0) - v[0]*m.row(2);
     res.row(2) = v[0]*m.row(1) - v[1]*m.row(0);
     return res;
   }
+  
 } // namespace se3
+
 #endif // ifndef __se3_skew_hpp__

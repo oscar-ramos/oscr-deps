@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -18,11 +18,12 @@
 
 #include <eigenpy/eigenpy.hpp>
 #include <eigenpy/geometry.hpp>
-#include "pinocchio/bindings/python/fwd.hpp"
 
-#include <iostream>
+#include "pinocchio/bindings/python/fwd.hpp"
+#include "pinocchio/multibody/fwd.hpp"
 
 namespace bp = boost::python;
+using namespace se3::python;
 
 BOOST_PYTHON_MODULE(libpinocchio_pywrap)
 {
@@ -40,19 +41,29 @@ BOOST_PYTHON_MODULE(libpinocchio_pywrap)
   eigenpy::enableEigenPySpecific<Matrix6x,Matrix6x>();
   eigenpy::enableEigenPySpecific<Matrix3x,Matrix3x>();
 
-  se3::python::exposeSE3();
-  se3::python::exposeForce();
-  se3::python::exposeMotion();
-  se3::python::exposeInertia();
-  se3::python::exposeJoints();
-  se3::python::exposeExplog();
-
-  se3::python::exposeModel();
-  se3::python::exposeFrame();
-  se3::python::exposeData();
-  se3::python::exposeGeometry();
+  exposeSE3();
+  exposeForce();
+  exposeMotion();
+  exposeInertia();
+  exposeJoints();
+  exposeExplog();
   
-  se3::python::exposeAlgorithms();
-  se3::python::exposeParsers();
+  bp::enum_< ::se3::ReferenceFrame >("ReferenceFrame")
+  .value("WORLD",::se3::WORLD)
+  .value("LOCAL",::se3::LOCAL)
+  ;
+
+  exposeModel();
+  exposeFrame();
+  exposeData();
+  exposeGeometry();
+  
+  exposeAlgorithms();
+  exposeParsers();
+  
+#ifdef WITH_HPP_FCL
+  exposeFCL();
+#endif // WITH_HPP_FCL
+  
 }
  

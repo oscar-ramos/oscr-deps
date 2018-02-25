@@ -1,5 +1,5 @@
 # 
-# Copyright (c) 2015-2016 CNRS
+# Copyright (c) 2015-2017 CNRS
 # Copyright (c) 2015 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 # 
 # This file is part of Pinocchio
@@ -16,27 +16,6 @@
 # <http://www.gnu.org/licenses/>.
 
 # --- MACROS --- #
-
-MACRO(ADD_GROUP GROUP_NAME FILENAMES)
-  FOREACH(filename ${${FILENAMES}})
-    GET_FILENAME_COMPONENT(filenamePath ${filename} PATH)
-    IF(NOT (filenamePath STREQUAL ""))
-      STRING(REGEX REPLACE "/" "\\\\" filenamePath ${filenamePath}) 
-      SOURCE_GROUP("${GROUP_NAME}\\${filenamePath}" FILES ${filename})
-    ELSE()
-      SOURCE_GROUP("${GROUP_NAME}" FILES ${filename})
-    ENDIF()
-  ENDFOREACH()
-ENDMACRO(ADD_GROUP) 
-
-MACRO(ADD_HEADER_GROUP FILENAMES)
-  ADD_GROUP("Header Files" ${FILENAMES})
-ENDMACRO(ADD_HEADER_GROUP FILENAMES)
-
-MACRO(ADD_SOURCE_GROUP FILENAMES)
-  ADD_GROUP("Source Files" ${FILENAMES})
-ENDMACRO(ADD_SOURCE_GROUP FILENAMES)
-
 MACRO(SYMLINK_AND_INSTALL_HEADERS HEADERS SUBPATH)
   FOREACH(header ${HEADERS})
     GET_FILENAME_COMPONENT(headerName ${header} NAME)
@@ -50,6 +29,9 @@ MACRO(SYMLINK_AND_INSTALL_HEADERS HEADERS SUBPATH)
             PERMISSIONS OWNER_READ GROUP_READ WORLD_READ OWNER_WRITE)
   ENDFOREACH(header)
 ENDMACRO(SYMLINK_AND_INSTALL_HEADERS HEADERS SUBPATH)
+
+# --- PYTHON TARGET --- #
+ADD_CUSTOM_TARGET(python EXCLUDE_FROM_ALL)
 
 # --- DEPENDENCIES --- #
 SET(PKG_CONFIG_PYWRAP_REQUIRES "eigenpy >= 1.3.1")
@@ -115,6 +97,7 @@ SET(${PROJECT_NAME}_PYTHON_SOURCES
   parsers/expose-parsers.cpp
   )
 
+# Parser for Python model
 SET(${PROJECT_NAME}_PARSER_PYTHON_HEADERS
   parsers/python.hpp
   )
@@ -122,6 +105,23 @@ SET(${PROJECT_NAME}_PARSER_PYTHON_HEADERS
 SET(${PROJECT_NAME}_PARSER_PYTHON_SOURCES
   parsers/python/model.cpp
   )
+
+# Python exposition of FCL
+IF(HPP_FCL_FOUND)
+  SET(${PROJECT_NAME}_PYTHON_FCL_HEADERS
+    multibody/fcl/contact.hpp
+    multibody/fcl/collision-result.hpp
+  #  multibody/fcl/distance-result.hpp
+    multibody/fcl/collision-geometry.hpp
+    )
+
+  SET(${PROJECT_NAME}_PYTHON_FCL_SOURCES
+    multibody/fcl/expose-fcl.cpp
+    )
+
+  LIST(APPEND ${PROJECT_NAME}_PYTHON_HEADERS ${${PROJECT_NAME}_PYTHON_FCL_HEADERS}) 
+  LIST(APPEND ${PROJECT_NAME}_PYTHON_SOURCES ${${PROJECT_NAME}_PYTHON_FCL_SOURCES}) 
+ENDIF(HPP_FCL_FOUND)
 
 LIST(APPEND HEADERS ${${PROJECT_NAME}_PYTHON_HEADERS})
 LIST(REMOVE_DUPLICATES HEADERS)
@@ -131,6 +131,9 @@ MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python"
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python/spatial")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python/multibody")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python/multibody/joint")
+IF(HPP_FCL_FOUND)
+  MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python/multibody/fcl")
+ENDIF(HPP_FCL_FOUND)
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python/parsers")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python/algorithm")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/bindings/python/utils")
@@ -146,6 +149,11 @@ SET(${PYWRAP}_SOURCES ${${PROJECT_NAME}_PYTHON_SOURCES} ${${PROJECT_NAME}_PARSER
 SET(${PYWRAP}_HEADERS ${${PROJECT_NAME}_PYTHON_HEADERS} ${${PROJECT_NAME}_PARSER_PYTHON_HEADERS})
 
 ADD_LIBRARY(${PYWRAP} SHARED ${${PYWRAP}_SOURCES} ${${PYWRAP}_HEADERS})
+ADD_DEPENDENCIES(python ${PYWRAP})
+
+IF(BUILD_WITH_COMMIT_VERSION)
+  TAG_LIBRARY_VERSION(${PYWRAP})
+ENDIF(BUILD_WITH_COMMIT_VERSION)
 ADD_HEADER_GROUP(${PYWRAP}_HEADERS)
 ADD_SOURCE_GROUP(${PYWRAP}_SOURCES)
 PKG_CONFIG_USE_DEPENDENCY(${PYWRAP} eigenpy)
@@ -165,13 +173,12 @@ ENDIF(APPLE)
 SET_TARGET_PROPERTIES(${PYWRAP} PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bindings/python/${PROJECT_NAME}")
 
-INSTALL(FILES
-  "${CMAKE_BINARY_DIR}/bindings/python/${PROJECT_NAME}/lib${PYWRAP}.so"
-  DESTINATION ${${PYWRAP}_INSTALL_DIR})
+INSTALL(TARGETS ${PYWRAP} DESTINATION ${${PYWRAP}_INSTALL_DIR})
 
 # --- INSTALL SCRIPTS 
 SET(PYTHON_FILES
   __init__.py
+  deprecation.py
   utils.py
   robot_wrapper.py
   romeo_wrapper.py

@@ -19,6 +19,7 @@
 #ifndef __se3_joint_translation_hpp__
 #define __se3_joint_translation_hpp__
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/spatial/inertia.hpp"
@@ -28,9 +29,6 @@
 
 namespace se3
 {
-
-  struct JointDataTranslation;
-  struct JointModelTranslation;
 
   struct MotionTranslation;
   template <>
@@ -173,6 +171,17 @@ namespace se3
       M.block <3,3> (Motion::ANGULAR, 0).setZero ();
 
       return M;
+    }
+    
+    DenseBase variation(const Motion & m) const
+    {
+      const Motion::ConstAngular_t w = m.angular();
+      
+      DenseBase res;
+      res.middleRows<3>(LINEAR) = skew(w);
+      res.middleRows<3>(ANGULAR).setZero();
+      
+      return res;
     }
 
   }; // struct ConstraintTranslationSubspace

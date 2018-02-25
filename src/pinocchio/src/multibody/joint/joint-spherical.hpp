@@ -19,6 +19,7 @@
 #ifndef __se3_joint_spherical_hpp__
 #define __se3_joint_spherical_hpp__
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/math/sincos.hpp"
@@ -30,9 +31,6 @@
 
 namespace se3
 {
-
-  struct JointDataSpherical;
-  struct JointModelSpherical;
 
   struct MotionSpherical;
   template <>
@@ -158,10 +156,22 @@ namespace se3
     Eigen::Matrix <double,6,3> se3Action (const SE3 & m) const
     {
       Eigen::Matrix <double,6,3> X_subspace;
-      X_subspace.block <3,3> (Motion::LINEAR, 0) = skew (m.translation ()) * m.rotation ();
+      X_subspace.block <3,3> (Motion::LINEAR, 0) = cross(m.translation(),m.rotation ());
       X_subspace.block <3,3> (Motion::ANGULAR, 0) = m.rotation ();
 
       return X_subspace;
+    }
+    
+    DenseBase variation(const Motion & m) const
+    {
+      const Motion::ConstLinear_t v = m.linear();
+      const Motion::ConstAngular_t w = m.angular();
+      
+      DenseBase res;
+      res.middleRows<3>(LINEAR) = skew(v);
+      res.middleRows<3>(ANGULAR) = skew(w);
+      
+      return res;
     }
 
   }; // struct ConstraintRotationalSubspace
@@ -189,6 +199,12 @@ namespace se3
     return M;
   }
 
+  /* [ABA] Y*S operator*/
+  inline SizeDepType<3>::ColsReturn<Inertia::Matrix6>::ConstType operator* (const Inertia::Matrix6 & Y, const ConstraintRotationalSubspace &)
+  {
+    return Y.middleCols<3>(Inertia::ANGULAR);
+  }
+  
   namespace internal
   {
     template<>

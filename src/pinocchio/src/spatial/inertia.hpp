@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -53,16 +53,22 @@ namespace se3
     operator Matrix6 () const { return matrix(); }
 
     Derived_t& operator= (const Derived_t& clone){return derived().__equl__(clone);}
-    bool operator== (const Derived_t& other) const {return derived().isEqual(other);}
+    bool operator==(const Derived_t & other) const {return derived().isEqual(other);}
+    bool operator!=(const Derived_t & other) const { return !(*this == other); }
+    
     Derived_t& operator+= (const Derived_t & Yb) { return derived().__pequ__(Yb); }
     Derived_t operator+(const Derived_t & Yb) const { return derived().__plus__(Yb); }
     Force operator*(const Motion & v) const    { return derived().__mult__(v); }
 
     Scalar vtiv(const Motion & v) const { return derived().vtiv_impl(v); }
+    Matrix6 variation(const Motion & v) const { return derived().variation_impl(v); }
 
     void setZero() { derived().setZero(); }
     void setIdentity() { derived().setIdentity(); }
     void setRandom() { derived().setRandom(); }
+    
+    bool isApprox (const Derived & other, const Scalar & prec = Eigen::NumTraits<Scalar>::dummy_precision()) const
+    { return derived().isApprox_impl(other, prec); }
 
     /// aI = aXb.act(bI)
     Derived_t se3Action(const SE3 & M) const { return derived().se3Action_impl(M); }
@@ -113,6 +119,8 @@ namespace se3
     friend class InertiaBase< InertiaTpl< _Scalar, _Options > >;
     SPATIAL_TYPEDEF_TEMPLATE(InertiaTpl);
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    
+    typedef typename Symmetric3::AlphaSkewSquare AlphaSkewSquare;
     
   public:
     // Constructors
@@ -225,12 +233,12 @@ namespace se3
     Matrix6 matrix_impl() const
     {
       Matrix6 M;
-      const Matrix3 & c_cross = (skew(c));
+      
       M.template block<3,3>(LINEAR, LINEAR ).setZero ();
       M.template block<3,3>(LINEAR, LINEAR ).diagonal ().fill (m);
-      M.template block<3,3>(ANGULAR,LINEAR ) = m * c_cross;
+      M.template block<3,3>(ANGULAR,LINEAR ) = alphaSkew(m,c);
       M.template block<3,3>(LINEAR, ANGULAR) = -M.template block<3,3> (ANGULAR, LINEAR);
-      M.template block<3,3>(ANGULAR,ANGULAR) = I - M.template block<3,3>(ANGULAR, LINEAR) * c_cross;
+      M.template block<3,3>(ANGULAR,ANGULAR) = (I - AlphaSkewSquare(m,c)).matrix();
 
       return M;
     }
@@ -246,6 +254,14 @@ namespace se3
     bool isEqual( const InertiaTpl& Y2 ) const
     { 
       return (m==Y2.m) && (c==Y2.c) && (I==Y2.I);
+    }
+    
+    bool isApprox_impl(const InertiaTpl & other, const Scalar & prec = Eigen::NumTraits<Scalar>::dummy_precision()) const
+    {
+      using std::fabs;
+      return fabs(m - other.m) <= prec
+      && c.isApprox(other.c,prec)
+      && I.isApprox(other.I,prec);
     }
 
     InertiaTpl __plus__(const InertiaTpl &Yb) const
@@ -289,6 +305,27 @@ namespace se3
       res += v.angular().dot(mcxcxw);
       res += I.vtiv(v.angular());
       
+      return res;
+    }
+    
+    Matrix6 variation(const Motion & v) const
+    {
+      Matrix6 res;
+      const Motion mv(v*m);
+      
+      res.template block<3,3>(LINEAR,ANGULAR) = -skew(mv.linear()) - skewSquare(mv.angular(),c) + skewSquare(c,mv.angular());
+      res.template block<3,3>(ANGULAR,LINEAR) = res.template block<3,3>(LINEAR,ANGULAR).transpose();
+      
+      res.template block<3,3>(LINEAR,LINEAR) = mv.linear()*c.transpose(); // use as temporary variable
+      res.template block<3,3>(ANGULAR,ANGULAR) = res.template block<3,3>(LINEAR,LINEAR) - res.template block<3,3>(LINEAR,LINEAR).transpose();
+      res.template block<3,3>(ANGULAR,ANGULAR) = -skewSquare(mv.linear(),c) - skewSquare(c,mv.linear());
+      
+      res.template block<3,3>(LINEAR,LINEAR) = (I - AlphaSkewSquare(m,c)).matrix();
+      
+      res.template block<3,3>(ANGULAR,ANGULAR) -= res.template block<3,3>(LINEAR,LINEAR) * skew(v.angular());
+      res.template block<3,3>(ANGULAR,ANGULAR) += cross(v.angular(),res.template block<3,3>(LINEAR,LINEAR));
+      
+      res.template block<3,3>(LINEAR,LINEAR).setZero();
       return res;
     }
 

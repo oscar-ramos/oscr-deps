@@ -22,7 +22,7 @@
 #include <Eigen/Geometry>
 #include "pinocchio/spatial/fwd.hpp"
 #include "pinocchio/spatial/skew.hpp"
-
+#include "pinocchio/macros.hpp"
 
 namespace se3
 {
@@ -77,6 +77,8 @@ namespace se3
         return derived().toActionMatrix_impl();
       }
       operator Matrix6() const { return toActionMatrix(); }
+    
+    Matrix6 toDualActionMatrix() const { return derived().toDualActionMatrix_impl(); }
 
 
 
@@ -105,10 +107,8 @@ namespace se3
       Derived_t actInv(const Derived_t& m2) const { return derived().actInv_impl(m2); }
 
 
-      bool operator == (const Derived_t & other) const
-      {
-        return derived().__equal__(other);
-      }
+    bool operator==(const Derived_t & other) const { return derived().__equal__(other); }
+    bool operator!=(const Derived_t & other) const { return !(*this == other); }
 
       bool isApprox (const Derived_t & other, const Scalar & prec = Eigen::NumTraits<Scalar>::dummy_precision()) const
       {
@@ -256,6 +256,21 @@ namespace se3
       B.col(2) = trans.cross(rot.col(2));
       return M;
     }
+    
+    Matrix6 toDualActionMatrix_impl() const
+    {
+      typedef Eigen::Block<Matrix6,3,3> Block3;
+      Matrix6 M;
+      M.template block<3,3>(ANGULAR,ANGULAR)
+      = M.template block<3,3>(LINEAR,LINEAR) = rot;
+      M.template block<3,3>(LINEAR,ANGULAR).setZero();
+      Block3 B = M.template block<3,3>(ANGULAR,LINEAR);
+      
+      B.col(0) = trans.cross(rot.col(0));
+      B.col(1) = trans.cross(rot.col(1));
+      B.col(2) = trans.cross(rot.col(2));
+      return M;
+    }
 
     void disp_impl(std::ostream & os) const
     {
@@ -277,8 +292,24 @@ namespace se3
       return d.se3ActionInverse(*this);
     }
 
-    Vector3 act_impl   (const Vector3& p) const { return rot*p+trans; }
-    Vector3 actInv_impl(const Vector3& p) const { return rot.transpose()*(p-trans); }
+    template<typename EigenDerived>
+    typename EigenDerived::PlainObject actOnEigenObject(const Eigen::MatrixBase<EigenDerived> & p) const
+    { return (rot*p+trans).eval(); }
+
+    template<typename MapDerived>
+    Vector3 actOnEigenObject(const Eigen::MapBase<MapDerived> & p) const
+    { return Vector3(rot*p+trans); }
+
+    template<typename EigenDerived>
+    typename EigenDerived::PlainObject actInvOnEigenObject(const Eigen::MatrixBase<EigenDerived> & p) const
+    { return (rot.transpose()*(p-trans)).eval(); }
+
+    template<typename MapDerived>
+    Vector3 actInvOnEigenObject(const Eigen::MapBase<MapDerived> & p) const
+    { return Vector3(rot.transpose()*(p-trans)); }
+
+    Vector3 act_impl   (const Vector3& p) const { return Vector3(rot*p+trans); }
+    Vector3 actInv_impl(const Vector3& p) const { return Vector3(rot.transpose()*(p-trans)); }
 
     SE3Tpl act_impl    (const SE3Tpl& m2) const { return SE3Tpl( rot*m2.rot,trans+rot*m2.trans);}
     SE3Tpl actInv_impl (const SE3Tpl& m2) const { return SE3Tpl( rot.transpose()*m2.rot, rot.transpose()*(m2.trans-trans));}

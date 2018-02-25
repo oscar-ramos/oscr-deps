@@ -238,11 +238,13 @@ namespace se3
     ,nle(model.nv)
     ,oMf((std::size_t)model.nframes)
     ,Ycrb((std::size_t)model.njoints)
+    ,dYcrb((std::size_t)model.njoints)
     ,M(model.nv,model.nv)
     ,ddq(model.nv)
     ,Yaba((std::size_t)model.njoints)
     ,u(model.nv)
     ,Ag(6,model.nv)
+    ,dAg(6,model.nv)
     ,Fcrb((std::size_t)model.njoints)
     ,lastChild((std::size_t)model.njoints)
     ,nvSubtree((std::size_t)model.njoints)
@@ -252,6 +254,7 @@ namespace se3
     ,parents_fromRow((std::size_t)model.nv)
     ,nvSubtree_fromRow((std::size_t)model.nv)
     ,J(6,model.nv)
+    ,dJ(6,model.nv)
     ,iMf((std::size_t)model.njoints)
     ,com((std::size_t)model.njoints)
     ,vcom((std::size_t)model.njoints)
@@ -291,6 +294,7 @@ namespace se3
     f[0].setZero();
     oMi[0].setIdentity();
     liMi[0].setIdentity();
+    oMf[0].setIdentity();
   }
 
   inline void Data::computeLastChild (const Model & model)

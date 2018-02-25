@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -20,6 +20,7 @@
 #define __se3_constraint_hpp__
 
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/spatial/fwd.hpp"
 #include "pinocchio/spatial/motion.hpp"
 
@@ -32,19 +33,18 @@ namespace se3
 {
   template<int _Dim, typename _Scalar, int _Options=0> class ConstraintTpl;
 
-  template< class Derived>
+  template<class Derived>
   class ConstraintBase
   {
   protected:
-    typedef Derived  Derived_t;
-    SPATIAL_TYPEDEF_TEMPLATE(Derived_t);
-    typedef typename traits<Derived_t>::JointMotion JointMotion;
-    typedef typename traits<Derived_t>::JointForce JointForce;
-    typedef typename traits<Derived_t>::DenseBase DenseBase;
+    typedef typename traits<Derived>::Scalar Scalar;
+    typedef typename traits<Derived>::JointMotion JointMotion;
+    typedef typename traits<Derived>::JointForce JointForce;
+    typedef typename traits<Derived>::DenseBase DenseBase;
 
   public:
-    Derived_t & derived() { return *static_cast<Derived_t*>(this); }
-    const Derived_t& derived() const { return *static_cast<const Derived_t*>(this); }
+    Derived & derived() { return *static_cast<Derived*>(this); }
+    const Derived& derived() const { return *static_cast<const Derived*>(this); }
 
     Motion operator* (const JointMotion& vj) const { return derived().__mult__(vj); }
 
@@ -52,7 +52,12 @@ namespace se3
     const DenseBase & matrix() const  { return derived().matrix_impl(); }
     int nv() const { return derived().nv_impl(); }
     
-    void disp(std::ostream & os) const { static_cast<const Derived_t*>(this)->disp_impl(os); }
+    template<class OtherDerived>
+    bool isApprox(const ConstraintBase<OtherDerived> & other,
+                  const Scalar & prec = Eigen::NumTraits<Scalar>::dummy_precision()) const
+    { return matrix().isApprox(other.matrix(),prec); }
+    
+    void disp(std::ostream & os) const { static_cast<const Derived*>(this)->disp_impl(os); }
     friend std::ostream & operator << (std::ostream & os,const ConstraintBase<Derived> & X)
     {
       X.disp(os);
@@ -121,9 +126,7 @@ namespace se3
     {
       // There is currently a bug in Eigen/Core/util/StaticAssert.h in the use of the full namespace path
       // TODO
-#ifndef EIGEN3_FUTURE
       EIGEN_STATIC_ASSERT_SAME_MATRIX_SIZE(DenseBase, D);
-#endif
     }
 
     ConstraintTpl() : S() 
@@ -186,9 +189,16 @@ namespace se3
     {
       return (m.inverse().toActionMatrix()*S).eval();
     }
+    
+    DenseBase variation(const Motion & v) const
+    {
+      DenseBase res(v.toActionMatrix() * S);
+      
+      return res;
+    }
 
     void disp_impl(std::ostream & os) const { os << "S =\n" << S << std::endl;}
-
+    
   protected:
     DenseBase S;
   }; // class ConstraintTpl

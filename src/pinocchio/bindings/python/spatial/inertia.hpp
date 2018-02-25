@@ -84,6 +84,13 @@ namespace se3
         .def(bp::self + bp::self)
         .def(bp::self * bp::other<Motion>() )
         .add_property("np",&Inertia::matrix)
+        .def("vxiv",&Inertia::vxiv,bp::arg("Motion v"),"Returns the result of v x Iv.")
+        
+        .def(bp::self == bp::self)
+        .def(bp::self != bp::self)
+        
+        .def("isApprox",(bool (Inertia::*)(const Inertia & other, const Scalar & prec)) &Inertia::isApprox,bp::args("other","prec"),"Returns true if *this is approximately equal to other, within the precision given by prec.")
+        .def("isApprox",(bool (Inertia::*)(const Inertia & other)) &Inertia::isApprox,bp::args("other"),"Returns true if *this is approximately equal to other.")
         
         .def("Identity",&Inertia::Identity,"Returns the identity Inertia.")
         .staticmethod("Identity")
@@ -114,7 +121,18 @@ namespace se3
       static void setLever( Inertia & self, const Vector3 & lever ) { self.lever() = lever; }
       
       static Matrix3 getInertia( const Inertia & self ) { return self.inertia().matrix(); }
-      static void setInertia( Inertia & self, const Vector6 & minimal_inertia ) { self.inertia().data() = minimal_inertia; }
+//      static void setInertia(Inertia & self, const Vector6 & minimal_inertia) { self.inertia().data() = minimal_inertia; }
+      static void setInertia(Inertia & self, const Matrix3 & symmetric_inertia)
+      {
+        assert(symmetric_inertia.isApprox(symmetric_inertia.transpose()));
+        self.inertia().data() <<
+        symmetric_inertia(0,0),
+        symmetric_inertia(1,0),
+        symmetric_inertia(1,1),
+        symmetric_inertia(0,2),
+        symmetric_inertia(1,2),
+        symmetric_inertia(2,2);
+      }
 
       static Inertia* makeFromMCI(const double & mass,
                                   const Vector3 & lever,

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015-2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -20,8 +20,8 @@
 #define __se3_motion_hpp__
 
 #include <Eigen/Core>
-#include <Eigen/Geometry>
 #include "pinocchio/spatial/fwd.hpp"
+#include "pinocchio/macros.hpp"
 #include "pinocchio/spatial/se3.hpp"
 #include "pinocchio/spatial/force.hpp"
 
@@ -55,14 +55,17 @@ namespace se3
     operator Vector6 () const { return toVector(); }
 
     ActionMatrix_t toActionMatrix() const { return derived().toActionMatrix_impl(); }
+    ActionMatrix_t toDualActionMatrix() const { return derived().toDualActionMatrix_impl(); }
     operator Matrix6 () const { return toActionMatrix(); }
 
-    bool operator== (const Derived_t & other) const {return derived().isEqual(other);}
+    bool operator==(const Derived_t & other) const {return derived().isEqual(other);}
+    bool operator!=(const Derived_t & other) const { return !(*this == other); }
     Derived_t operator-() const { return derived().__minus__(); }
     Derived_t operator+(const Derived_t & v2) const { return derived().__plus__(v2); }
     Derived_t operator-(const Derived_t & v2) const { return derived().__minus__(v2); }
     Derived_t & operator+=(const Derived_t & v2) { return derived().__pequ__(v2); }
     Derived_t & operator-=(const Derived_t & v2) { return derived().__mequ__(v2); }
+    Derived_t operator*(const Scalar alpha) const { return derived().__mult__(alpha); }
 
     bool isApprox (const Derived_t & other, const Scalar & prec = Eigen::NumTraits<Scalar>::dummy_precision()) const
     { return derived().isApprox_impl(other, prec);}
@@ -153,10 +156,20 @@ namespace se3
     ActionMatrix_t toActionMatrix_impl () const
     {
       ActionMatrix_t X;
-      X.block <3,3> (ANGULAR, ANGULAR) = X.block <3,3> (LINEAR, LINEAR) = skew (angular_impl());
-      X.block <3,3> (LINEAR, ANGULAR) = skew (linear_impl());
-      X.block <3,3> (ANGULAR, LINEAR).setZero ();
+      X.template block <3,3> (ANGULAR, ANGULAR) = X.template block <3,3> (LINEAR, LINEAR) = skew (angular_impl());
+      X.template block <3,3> (LINEAR, ANGULAR) = skew (linear_impl());
+      X.template block <3,3> (ANGULAR, LINEAR).setZero ();
 
+      return X;
+    }
+    
+    ActionMatrix_t toDualActionMatrix_impl () const
+    {
+      ActionMatrix_t X;
+      X.template block <3,3> (ANGULAR, ANGULAR) = X.template block <3,3> (LINEAR, LINEAR) = skew (angular_impl());
+      X.template block <3,3> (ANGULAR, LINEAR) = skew (linear_impl());
+      X.template block <3,3> (LINEAR, ANGULAR).setZero ();
+      
       return X;
     }
 
@@ -194,6 +207,7 @@ namespace se3
     MotionTpl __minus__(const MotionTpl & v2) const { return MotionTpl(data - v2.data); }
     MotionTpl& __pequ__(const MotionTpl & v2) { data += v2.data; return *this; }
     MotionTpl& __mequ__(const MotionTpl & v2) { data -= v2.data; return *this; }
+    MotionTpl __mult__(const Scalar alpha) const { return MotionTpl(alpha*data); }
     
     Scalar dot(const Force & f) const { return data.dot(f.toVector()); }
 
@@ -257,6 +271,10 @@ namespace se3
   MotionTpl<S,O> operator^( const MotionTpl<S,O> &m1, const MotionTpl<S,O> &m2 ) { return m1.cross(m2); }
   template<typename S,int O>
   ForceTpl<S,O> operator^( const MotionTpl<S,O> &m, const ForceTpl<S,O> &f ) { return m.cross(f); }
+  
+  template<typename S,int O>
+  MotionTpl<S,O> operator*(const S alpha, const MotionTpl<S,O> & m )
+  { return m*alpha; }
 
 
   ///////////////   BiasZero  ///////////////

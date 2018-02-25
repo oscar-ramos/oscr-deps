@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015 - 2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -21,6 +21,7 @@
 
 # include <Eigen/Geometry>
 
+# include "pinocchio/macros.hpp"
 # include "pinocchio/math/sincos.hpp"
 # include "pinocchio/spatial/motion.hpp"
 # include "pinocchio/spatial/skew.hpp"
@@ -39,7 +40,9 @@ namespace se3
   template <typename D> Eigen::Matrix<typename D::Scalar,3,3,Eigen::internal::traits<D>::Options>
   exp3(const Eigen::MatrixBase<D> & v)
   {
-    EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(D,3);
+    EIGEN_STATIC_ASSERT_SAME_VECTOR_SIZE (Eigen::MatrixBase<D>,
+                                          Eigen::Vector3f);
+    assert (v.size () == 3);
     typename D::Scalar nv = v.norm();
     if (nv > 1e-14)
       return Eigen::AngleAxis<typename D::Scalar>(nv, v / nv).matrix();
@@ -49,7 +52,7 @@ namespace se3
 
   /// \brief Log: SO3 -> so3.
   ///
-  /// Pseudo-inverse of log from SO3 -> { v \in so3, ||v|| < 2pi }.
+  /// Pseudo-inverse of log from \f$ SO3 -> { v \in so3, ||v|| \le pi } \f$.
   ///
   /// \param[in] R The rotation matrix.
   ///
@@ -58,8 +61,11 @@ namespace se3
   template <typename D> Eigen::Matrix<typename D::Scalar,3,1,Eigen::internal::traits<D>::Options>
   log3(const Eigen::MatrixBase<D> & R)
   {
-    EIGEN_STATIC_ASSERT_MATRIX_SPECIFIC_SIZE(D, 3, 3);
+    EIGEN_STATIC_ASSERT_SAME_MATRIX_SIZE(D, Eigen::Matrix3d);
     Eigen::AngleAxis<typename D::Scalar> angleAxis(R);
+    assert(0 <= angleAxis.angle() && angleAxis.angle() <= 2 * M_PI);
+    if (angleAxis.angle() > M_PI)
+      return -(2*M_PI - angleAxis.angle()) * angleAxis.axis();
     return angleAxis.axis() * angleAxis.angle();
   }
 
@@ -167,4 +173,4 @@ namespace se3
   }
 } // namespace se3
 
-#endif //#ifndef __math_explog_hpp__
+#endif //#ifndef __spatial_explog_hpp__

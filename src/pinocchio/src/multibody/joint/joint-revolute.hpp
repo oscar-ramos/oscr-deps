@@ -21,6 +21,7 @@
 
 #include "pinocchio/math/sincos.hpp"
 #include "pinocchio/spatial/inertia.hpp"
+#include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 
 #include <stdexcept>
@@ -28,9 +29,6 @@
 namespace se3
 {
 
-  template<int axis> struct JointDataRevolute;
-  template<int axis> struct JointModelRevolute;
-  
   template<int axis> struct SE3Revolute;
   template<int axis> struct MotionRevolute;
 
@@ -199,6 +197,18 @@ namespace se3
       Eigen::Matrix<double,6,1> S;
       S << Eigen::Vector3d::Zero(), revolute::CartesianVector3<axis>(1).vector();
       return ConstraintXd(S);
+    }
+    
+    DenseBase variation(const Motion & m) const
+    {
+      const typename Motion::ConstLinear_t v = m.linear();
+      const typename Motion::ConstAngular_t w = m.angular();
+      
+      const Vector3 a(revolute::CartesianVector3<axis>(1).vector());
+      DenseBase res;
+      res << v.cross(a), w.cross(a);
+      
+      return res;
     }
   }; // struct ConstraintRevolute
 

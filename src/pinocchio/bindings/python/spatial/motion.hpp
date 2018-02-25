@@ -40,6 +40,7 @@ namespace se3
       typedef typename Motion::Force Force;
       typedef typename Motion::Vector6 Vector6;
       typedef typename Motion::Vector3 Vector3;
+      typedef typename Motion::Scalar Scalar;
 
     public:
 
@@ -73,6 +74,9 @@ namespace se3
         .def("se3ActionInverse",&Motion::se3ActionInverse,
              bp::args("M"),"Returns the result of the action of the inverse of M on *this.")
         
+        .add_property("action",&Motion::toActionMatrix,"Returns the action matrix of *this (acting on Motion).")
+        .add_property("dualAction",&Motion::toDualActionMatrix,"Returns the dual action matrix of *this (acting on Force).")
+        
         .def("setZero",&MotionPythonVisitor::setZero,
              "Set the linear and angular components of *this to zero.")
         .def("setRandom",&MotionPythonVisitor::setRandom,
@@ -90,6 +94,12 @@ namespace se3
         .def(-bp::self)
         .def(bp::self ^ bp::self)
         .def(bp::self ^ Force())
+        
+        .def(bp::self == bp::self)
+        .def(bp::self != bp::self)
+        
+        .def("isApprox",(bool (Motion::*)(const Motion & other, const Scalar & prec)) &Motion::isApprox,bp::args("other","prec"),"Returns true if *this is approximately equal to other, within the precision given by prec.")
+        .def("isApprox",(bool (Motion::*)(const Motion & other)) &Motion::isApprox,bp::args("other"),"Returns true if *this is approximately equal to other.")
         
         .def("Random",&Motion::Random,"Returns a random Motion.")
         .staticmethod("Random")

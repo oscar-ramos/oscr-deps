@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015-2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -19,6 +19,7 @@
 #ifndef __se3_joint_free_flyer_hpp__
 #define __se3_joint_free_flyer_hpp__
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/spatial/inertia.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
@@ -30,9 +31,6 @@
 
 namespace se3
 {
-
-  struct JointDataFreeFlyer;
-  struct JointModelFreeFlyer;
 
   struct ConstraintIdentity;
 
@@ -86,6 +84,8 @@ namespace se3
       
       TransposeConst transpose() const { return TransposeConst(); }
       operator ConstraintXd () const { return ConstraintXd(SE3::Matrix6::Identity()); }
+      
+      DenseBase variation(const Motion & m) const { return m.toActionMatrix(); }
     }; // struct ConstraintIdentity
 
     template<typename D>

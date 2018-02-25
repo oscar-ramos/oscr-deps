@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015-2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -19,6 +19,7 @@
 #ifndef __se3_joint_revolute_unaligned_hpp__
 #define __se3_joint_revolute_unaligned_hpp__
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/spatial/inertia.hpp"
@@ -27,9 +28,6 @@
 
 namespace se3
 {
-
-  struct JointDataRevoluteUnaligned;
-  struct JointModelRevoluteUnaligned;
 
   struct MotionRevoluteUnaligned;
   template <>
@@ -192,6 +190,17 @@ namespace se3
       	DenseBase S;
       	S << Eigen::Vector3d::Zero(), axis;
       	return ConstraintXd(S);
+      }
+      
+      DenseBase variation(const Motion & m) const
+      {
+        const Motion::ConstLinear_t v = m.linear();
+        const Motion::ConstAngular_t w = m.angular();
+        
+        DenseBase res;
+        res << v.cross(axis), w.cross(axis);
+        
+        return res;
       }
       
     }; // struct ConstraintRevoluteUnaligned

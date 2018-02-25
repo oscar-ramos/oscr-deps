@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2016 CNRS
+# Copyright (c) 2015-2017 CNRS
 # Copyright (c) 2015 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 #
 # This file is part of Pinocchio
@@ -19,8 +19,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
 INCLUDE(cmake/base.cmake)
 INCLUDE(cmake/boost.cmake)
-INCLUDE(cmake/eigen.cmake)
 #INCLUDE(cmake/python.cmake)
+Include(cmake/ide.cmake)
 
 SET(PROJECT_NAME pinocchio)
 SET(PROJECT_DESCRIPTION "Rigid multi body dynamics algorithms")
@@ -61,11 +61,17 @@ OPTION (BUILD_UTILS "Build the utils" OFF)
 OPTION (INITIALIZE_WITH_NAN "Initialize Eigen entries with NaN" OFF)
 OPTION (BUILD_TESTS_WITH_HPP "Build geom tests and benchmarks with hpp to do comparisons" OFF)
 OPTION (BUILD_PYTHON_INTERFACE "Build the python binding" ON)
+OPTION (BUILD_WITH_LUA_SUPPORT "Build the lua parser" OFF)
+OPTION (BUILD_WITH_COMMIT_VERSION "Build libraries by setting specific commit version" OFF)
 
 IF (INITIALIZE_WITH_NAN)
   MESSAGE (STATUS "Initialize with NaN all the Eigen entries.")
   ADD_DEFINITIONS(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
 ENDIF (INITIALIZE_WITH_NAN)
+
+MACRO(TAG_LIBRARY_VERSION target)
+  SET_TARGET_PROPERTIES(${target} PROPERTIES SOVERSION ${PROJECT_VERSION})
+ENDMACRO(TAG_LIBRARY_VERSION)
 
 # ----------------------------------------------------
 # --- DEPENDANCIES -----------------------------------
@@ -73,8 +79,7 @@ ENDIF (INITIALIZE_WITH_NAN)
 ADD_REQUIRED_DEPENDENCY("eigen3 >= 3.0.5")
 ADD_OPTIONAL_DEPENDENCY("metapod >= 1.0.7")
 ADD_OPTIONAL_DEPENDENCY("urdfdom >= 0.2.0")
-ADD_OPTIONAL_DEPENDENCY("lua5.1")
-ADD_OPTIONAL_DEPENDENCY("hpp-fcl >= 0.4.2")
+ADD_OPTIONAL_DEPENDENCY("hpp-fcl >= 0.5.1")
 
 # Spetcial care of Eigen3 greater than 3.2.10
 IF(EIGEN3_FOUND)
@@ -82,19 +87,55 @@ IF(EIGEN3_FOUND)
     ADD_DEFINITIONS(-DEIGEN3_FUTURE)
     SET(EIGEN3_FUTURE TRUE)
     PKG_CONFIG_APPEND_CFLAGS("-DEIGEN3_FUTURE")
+    IF(${EIGEN3_VERSION} VERSION_LESS "3.3.0")
+      ADD_DEFINITIONS(-DEIGEN3_BETA_3_2_9x)
+      SET(EIGEN3_FUTURE TRUE)
+      PKG_CONFIG_APPEND_CFLAGS("-DEIGEN3_BETA_3_2_9x")
+    ENDIF(${EIGEN3_VERSION} VERSION_LESS "3.3.0")
   ELSE(${EIGEN3_VERSION} VERSION_GREATER "3.2.10")
     SET(EIGEN3_FUTURE FALSE)
   ENDIF(${EIGEN3_VERSION} VERSION_GREATER "3.2.10")
 ENDIF(EIGEN3_FOUND)
 
-# Special care of urdfdom less than 0.3.0
+# Special care of urdfdom version
 IF(URDFDOM_FOUND)
   IF(${URDFDOM_VERSION} VERSION_LESS "0.3.0")
     ADD_DEFINITIONS(-DURDFDOM_COLLISION_WITH_GROUP_NAME)
-    SET(URDFDOM_COLLISION_WITH_GROUP_NAME TRUE)
     PKG_CONFIG_APPEND_CFLAGS("-DURDFDOM_COLLISION_WITH_GROUP_NAME")
   ENDIF(${URDFDOM_VERSION} VERSION_LESS "0.3.0")
+
+  # defines types from version 0.4.0
+  IF(NOT ${URDFDOM_VERSION} VERSION_LESS "0.4.0")
+    ADD_DEFINITIONS(-DURDFDOM_TYPEDEF_SHARED_PTR)
+    PKG_CONFIG_APPEND_CFLAGS("-DURDFDOM_TYPEDEF_SHARED_PTR")
+  ENDIF(NOT ${URDFDOM_VERSION} VERSION_LESS "0.4.0")
+  
+  # std::shared_ptr appears from version 1.0.0
+  IF(${URDFDOM_VERSION} VERSION_GREATER "0.4.2")
+    ADD_DEFINITIONS(-DURDFDOM_USE_STD_SHARED_PTR)
+    PKG_CONFIG_APPEND_CFLAGS("-DURDFDOM_USE_STD_SHARED_PTR")
+  ENDIF(${URDFDOM_VERSION} VERSION_GREATER "0.4.2")
 ENDIF(URDFDOM_FOUND)
+
+# Special care of lua which can be of versions 5.1 or 5.2
+# Priority is set to lua5.2
+IF(BUILD_WITH_LUA_SUPPORT)
+  ADD_OPTIONAL_DEPENDENCY("lua5.2")
+  IF(LUA5_2_FOUND)
+    SET(LUA5_FOUND TRUE)
+    SET(LUA5_PACKAGE "lua5.2")
+    ADD_DEFINITIONS(-DLUA_VERSION_GREATER_5_2)
+    PKG_CONFIG_APPEND_CFLAGS("-DLUA_VERSION_GREATER_5_2")
+  ELSE(LUA5_2_FOUND)
+    ADD_OPTIONAL_DEPENDENCY("lua5.1")
+    IF(LUA5_1_FOUND)
+      SET(LUA5_FOUND TRUE)
+      SET(LUA5_PACKAGE "lua5.1")
+    ELSE(LUA5_1_FOUND)
+      MESSAGE(FATAL_ERROR "Cannot find a suitable version of Lua 5.1 or 5.2")
+    ENDIF(LUA5_1_FOUND)
+  ENDIF(LUA5_2_FOUND)
+ENDIF(BUILD_WITH_LUA_SUPPORT)
 
 SET(BOOST_REQUIERED_COMPONENTS filesystem system)
 SET(BOOST_BUILD_COMPONENTS unit_test_framework)
@@ -164,6 +205,16 @@ SET(${PROJECT_NAME}_MULTIBODY_JOINT_HEADERS
   multibody/joint/joint-composite.hpp
   ) 
 
+SET(${PROJECT_NAME}_MULTIBODY_LIEGROUP_HEADERS
+  multibody/liegroup/liegroup.hpp
+  multibody/liegroup/operation-base.hpp
+  multibody/liegroup/operation-base.hxx
+  multibody/liegroup/vector-space.hpp
+  multibody/liegroup/cartesian-product.hpp
+  multibody/liegroup/special-orthogonal.hpp
+  multibody/liegroup/special-euclidean.hpp
+  ) 
+
 SET(${PROJECT_NAME}_MULTIBODY_HEADERS
   multibody/fwd.hpp
   multibody/constraint.hpp
@@ -193,8 +244,10 @@ SET(${PROJECT_NAME}_ALGORITHM_HEADERS
   algorithm/center-of-mass.hpp
   algorithm/center-of-mass.hxx
   algorithm/joint-configuration.hpp
+  algorithm/joint-configuration.hxx
   algorithm/energy.hpp
   algorithm/frames.hpp
+  algorithm/frames.hxx
   algorithm/compute-all-terms.hpp
   algorithm/copy.hpp
   algorithm/check.hpp
@@ -216,6 +269,7 @@ IF(URDFDOM_FOUND)
   LIST(APPEND ${PROJECT_NAME}_PARSERS_HEADERS
     parsers/urdf.hpp
     parsers/urdf/utils.hpp
+    parsers/urdf/types.hpp
     )
 
   ADD_DEFINITIONS(-DWITH_URDFDOM)
@@ -241,27 +295,29 @@ IF(HPP_FCL_FOUND)
   LIST(APPEND CFLAGS_DEPENDENCIES "-DWITH_HPP_FCL")
 ENDIF(HPP_FCL_FOUND)
 
-IF(LUA5_1_FOUND)
+IF(LUA5_FOUND)
   LIST(APPEND ${PROJECT_NAME}_PARSERS_HEADERS
     parsers/lua.hpp
     parsers/lua/lua_tables.hpp
     )
 
-  ADD_DEFINITIONS(-DWITH_LUA)
-  LIST(APPEND CFLAGS_DEPENDENCIES "-DWITH_LUA")
-ENDIF(LUA5_1_FOUND)
+  ADD_DEFINITIONS(-DWITH_LUA5)
+  LIST(APPEND CFLAGS_DEPENDENCIES "-DWITH_LUA5")
+ENDIF(LUA5_FOUND)
 
 SET(HEADERS
   ${${PROJECT_NAME}_MATH_HEADERS}
   ${${PROJECT_NAME}_TOOLS_HEADERS}
   ${${PROJECT_NAME}_SPATIAL_HEADERS}
   ${${PROJECT_NAME}_MULTIBODY_JOINT_HEADERS}
+  ${${PROJECT_NAME}_MULTIBODY_LIEGROUP_HEADERS}
   ${${PROJECT_NAME}_MULTIBODY_HEADERS}
   ${${PROJECT_NAME}_PARSERS_HEADERS}
   ${${PROJECT_NAME}_ALGORITHM_HEADERS}
   ${${PROJECT_NAME}_CONTAINER_HEADERS}
   exception.hpp
   assert.hpp
+  macros.hpp
  )
 LIST(REMOVE_DUPLICATES HEADERS)
 
@@ -270,6 +326,7 @@ MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/math")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/spatial")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/multibody")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/multibody/joint")
+MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/multibody/liegroup")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/parsers/lua")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/parsers")
 MAKE_DIRECTORY("${${PROJECT_NAME}_BINARY_DIR}/include/pinocchio/parsers/urdf")
@@ -292,17 +349,17 @@ ENDFOREACH(header)
 ADD_SUBDIRECTORY(src)
 
 # --- BINDINGS -----------------------------------------------------------------
-#SET(PYWRAP ${PROJECT_NAME}_pywrap)
-#ADD_SUBDIRECTORY(bindings)
+# SET(PYWRAP ${PROJECT_NAME}_pywrap)
+# ADD_SUBDIRECTORY(bindings)
 
 # --- EXECUTABLES --------------------------------------------------------------
 ADD_SUBDIRECTORY(utils)
 
 # --- UNIT TESTS ---------------------------------------------------------------
-#ADD_SUBDIRECTORY(unittest)
+# ADD_SUBDIRECTORY(unittest)
 
 # --- BENCHMARKS ---------------------------------------------------------------
-#ADD_SUBDIRECTORY(benchmark)
+# ADD_SUBDIRECTORY(benchmark)
 
 # --- PACKAGING ----------------------------------------------------------------
 PKG_CONFIG_APPEND_LIBS (${PROJECT_NAME})

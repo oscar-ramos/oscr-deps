@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 //
 // This file is part of Pinocchio
 // Pinocchio is free software: you can redistribute it
@@ -26,22 +26,26 @@ namespace se3
   /* --- GEOMETRY PLACEMENTS -------------------------------------------------------- */
   /* --- GEOMETRY PLACEMENTS -------------------------------------------------------- */
   inline void updateGeometryPlacements(const Model & model,
-                                      Data & data,
-                                      const GeometryModel & geomModel,
-                                      GeometryData & geomData,
-                                      const Eigen::VectorXd & q
-                                      )
+                                       Data & data,
+                                       const GeometryModel & geomModel,
+                                       GeometryData & geomData,
+                                       const Eigen::VectorXd & q
+                                       )
   {
+    assert(model.check(data) && "data is not consistent with model.");
+    
     forwardKinematics(model, data, q);
     updateGeometryPlacements(model, data, geomModel, geomData);
   }
   
-  inline void  updateGeometryPlacements(const Model &,
-                                       const Data & data,
-                                       const GeometryModel & geomModel,
-                                       GeometryData & geomData
-                                       )
+  inline void  updateGeometryPlacements(const Model & model,
+                                        const Data & data,
+                                        const GeometryModel & geomModel,
+                                        GeometryData & geomData
+                                        )
   {
+    assert(model.check(data) && "data is not consistent with model.");
+    
     for (GeomIndex i=0; i < (GeomIndex) geomModel.ngeoms; ++i)
     {
       const Model::JointIndex & joint = geomModel.geometryObjects[i].parentJoint;
@@ -108,6 +112,8 @@ namespace se3
                                 const bool stopAtFirstCollision
                                 )
   {
+    assert(model.check(data) && "data is not consistent with model.");
+    
     updateGeometryPlacements (model, data, geomModel, geomData, q);
     
     return computeCollisions(geomModel,geomData, stopAtFirstCollision);
@@ -185,6 +191,7 @@ namespace se3
                                const Eigen::VectorXd & q
                                )
   {
+    assert(model.check(data) && "data is not consistent with model.");
     updateGeometryPlacements (model, data, geomModel, geomData, q);
     return computeDistances<ComputeShortest>(geomModel,geomData);
   }
@@ -217,7 +224,7 @@ namespace se3
       const Model::JointIndex & i = geom.parentJoint;
       assert (i<geomData.radius.size());
 
-      double radius = geomData.radius[i];
+      double radius = geomData.radius[i] * geomData.radius[i];
 
       // The radius is simply the one of the 8 corners of the AABB cube, expressed 
       // in the joint frame, whose norm is the highest.

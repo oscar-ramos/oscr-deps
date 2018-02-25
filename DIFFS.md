@@ -35,17 +35,18 @@ This library can be obtained from the github repo at:
      https://github.com/stack-of-tasks/pinocchio
 
 The git commit that is currently used is:
-    aafd6d818382b84433187792a91f45e4f43c4035 (Fri Oct 14 2016)
+    08ca1cfe5bfde88a1039f893c99c6d30d5811734 (Mon Jan 15 2018)
 
 Changes to the original Pinocchio package are:
 
   + The following folders have been removed (they are not used by this
-    project): doc, lab, models, travis_custom, cmake/doxygen, hidden folders
+    project): doc, lab, models, travis_custom, cmake/doxygen, unittest,
+    benchmark, hidden folders
 
-  + Commented out lines 23, 103-107, 295, 296, 302, 305 in CMakeLists.txt to
+  + Commented out lines 22, 144-148, 352-353, 359, 362 in CMakeLists.txt to
     avoid documentation issues and python bindings.
 
-  + Commented out line 179 in cmake/base.cmake to avoid documentation issues
+  + Commented out line 216 in cmake/base.cmake to avoid documentation issues
 
 qpOASES-3.2.0
 =============

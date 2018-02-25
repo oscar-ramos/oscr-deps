@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015-2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -19,6 +19,7 @@
 #ifndef __se3_joint_spherical_ZYX_hpp__
 #define __se3_joint_spherical_ZYX_hpp__
 #include <iostream>
+#include "pinocchio/macros.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/math/sincos.hpp"
@@ -29,9 +30,6 @@
 
 namespace se3
 {
-
-  struct JointDataSphericalZYX;
-  struct JointModelSphericalZYX;
   
   template <typename _Scalar, int _Options>
   struct JointSphericalZYXTpl
@@ -99,6 +97,7 @@ namespace se3
       typedef Eigen::Matrix <_Scalar,3,3,_Options> Matrix3;
       typedef Eigen::Matrix <_Scalar,3,1,_Options> Vector3;
       typedef Eigen::Matrix <_Scalar,6,3,_Options> ConstraintDense;
+      typedef Eigen::Matrix <_Scalar,6,3,_Options> DenseBase;
 
       Matrix3 S_minimal;
 
@@ -189,6 +188,18 @@ namespace se3
                                  
         return result;
       }
+      
+      DenseBase variation(const Motion & m) const
+      {
+        const typename Motion::ConstLinear_t v = m.linear();
+        const typename Motion::ConstAngular_t w = m.angular();
+        
+        DenseBase res;
+        res.template middleRows<3>(Motion::LINEAR) = cross(v,S_minimal);
+        res.template middleRows<3>(Motion::ANGULAR) = cross(w,S_minimal);
+        
+        return res;
+      }
 
     }; // struct ConstraintRotationalSubspace
 
@@ -230,23 +241,30 @@ namespace se3
   }
   
   /* [ABA] Y*S operator (Inertia Y,Constraint S) */
-  //  inline Eigen::Matrix<double,6,3>
-  template <typename _Scalar, int _Options>
-#ifdef EIGEN3_FUTURE
-  const typename Eigen::Product<
-  const Eigen::Block<const Inertia::Matrix6,6,3>,
-  const typename JointSphericalZYXTpl<_Scalar,_Options>::ConstraintRotationalSubspace::Matrix3
-  >
-#else
-  const typename Eigen::ProductReturnType<
-  const Eigen::Block<const Inertia::Matrix6,6,3>,
-  const typename JointSphericalZYXTpl<_Scalar,_Options>::ConstraintRotationalSubspace::Matrix3
-  >::Type
-#endif
-  operator*(const typename InertiaTpl<_Scalar,_Options>::Matrix6 & Y,
-            const typename JointSphericalZYXTpl<_Scalar,_Options>::ConstraintRotationalSubspace & S)
+//  template <typename _Scalar, int _Options>
+//  inline Eigen::Matrix<_Scalar,6,3,_Options>
+//#ifdef EIGEN3_FUTURE
+//  const typename Eigen::Product<
+//  const Eigen::template Block<const typename InertiaTpl<_Scalar,_Options>::Matrix6,6,3>,
+//  const typename JointSphericalZYXTpl<_Scalar,_Options>::ConstraintRotationalSubspace::Matrix3
+//  >
+//#else
+//  const typename Eigen::ProductReturnType<
+//  const Eigen::template Block<const typename InertiaTpl<_Scalar,_Options>::Matrix6,6,3>,
+//  const typename JointSphericalZYXTpl<_Scalar,_Options>::ConstraintRotationalSubspace::Matrix3
+//  >::Type
+//#endif
+//  operator*(const typename InertiaTpl<_Scalar,_Options>::Matrix6 & Y,
+//            const typename JointSphericalZYXTpl<_Scalar,_Options>::ConstraintRotationalSubspace & S)
+//  {
+//    return Y.template middleCols<3>(Inertia::ANGULAR) * S.S_minimal;
+//  }
+  
+  inline Eigen::Matrix<double,6,3>
+  operator*(const Inertia::Matrix6 & Y,
+            const JointSphericalZYX::ConstraintRotationalSubspace & S)
   {
-    return Y.template block<6,3> (0,Inertia::ANGULAR,0,3) * S.S_minimal;
+    return (Y.middleCols<3>(Inertia::ANGULAR) * S.S_minimal).eval();
   }
 
   namespace internal

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -19,6 +19,7 @@
 #ifndef __se3_joint_prismatic_unaligned_hpp__
 #define __se3_joint_prismatic_unaligned_hpp__
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/spatial/inertia.hpp"
@@ -27,9 +28,6 @@
 
 namespace se3
 {
-
-  struct JointDataPrismaticUnaligned;
-  struct JointModelPrismaticUnaligned;
 
   struct MotionPrismaticUnaligned;
   
@@ -191,6 +189,14 @@ namespace se3
         Vector6 S;
       	S << axis, Vector3::Zero();
       	return ConstraintXd(S);
+      }
+      
+      DenseBase variation(const Motion & m) const
+      {
+        DenseBase res;
+        res << m.angular().cross(axis), Vector3::Zero();
+        
+        return res;
       }
       
     }; // struct ConstraintPrismaticUnaligned

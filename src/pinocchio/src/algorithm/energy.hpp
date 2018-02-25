@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016 CNRS
+// Copyright (c) 2016-2017 CNRS
 //
 // This file is part of Pinocchio
 // Pinocchio is free software: you can redistribute it
@@ -20,6 +20,7 @@
 
 #include "pinocchio/multibody/model.hpp"
 #include "pinocchio/algorithm/kinematics.hpp"
+#include "pinocchio/algorithm/check.hpp"
 
 namespace se3 {
   
@@ -71,6 +72,8 @@ namespace se3
                 const Eigen::VectorXd & v,
                 const bool update_kinematics)
   {
+    assert(model.check(data) && "data is not consistent with model.");
+    
     data.kinetic_energy = 0.;
     
     if (update_kinematics)
@@ -89,6 +92,8 @@ namespace se3
                   const Eigen::VectorXd & q,
                   const bool update_kinematics)
   {
+    assert(model.check(data) && "data is not consistent with model.");
+    
     data.potential_energy = 0.;
     const Motion::ConstLinear_t & g = model.gravity.linear();
     SE3::Vector3 com_global;
@@ -99,7 +104,7 @@ namespace se3
     for(Model::JointIndex i=1;i<(Model::JointIndex)(model.njoints);++i)
     {
       com_global = data.oMi[i].translation() + data.oMi[i].rotation() * model.inertias[i].lever();
-      data.potential_energy += model.inertias[i].mass() * com_global.dot(g);
+      data.potential_energy -= model.inertias[i].mass() * com_global.dot(g);
     }
     
     return data.potential_energy;

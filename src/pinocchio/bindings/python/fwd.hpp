@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -44,6 +44,10 @@ namespace se3
     
     // Expose algorithms
     void exposeAlgorithms();
+    
+#ifdef WITH_HPP_FCL
+    void exposeFCL();
+#endif // WITH_HPP_FCL
 
   } // namespace python
 } // namespace se3

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 // Copyright (c) 2015-2016 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -19,6 +19,7 @@
 #ifndef __se3_joint_prismatic_hpp__
 #define __se3_joint_prismatic_hpp__
 
+#include "pinocchio/macros.hpp"
 #include "pinocchio/multibody/joint/joint-base.hpp"
 #include "pinocchio/multibody/constraint.hpp"
 #include "pinocchio/spatial/inertia.hpp"
@@ -27,9 +28,6 @@
 
 namespace se3
 {
-
-  template<int axis> struct JointDataPrismatic;
-  template<int axis> struct JointModelPrismatic;
   
   namespace prismatic
   {
@@ -197,6 +195,14 @@ namespace se3
       Eigen::Matrix<double,6,1> S;
       S << prismatic::CartesianVector3<axis>(1).vector(), Eigen::Vector3d::Zero();
       return ConstraintXd(S);
+    }
+    
+    DenseBase variation(const Motion & m) const
+    {
+      DenseBase res;
+      res << m.angular().cross(prismatic::CartesianVector3<axis>(1).vector()), Vector3::Zero();
+      
+      return res;
     }
 
   }; // struct ConstraintPrismatic

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2018 CNRS
 // Copyright (c) 2015 Wandercraft, 86 rue de Paris 91400 Orsay, France.
 //
 // This file is part of Pinocchio
@@ -101,6 +101,9 @@ namespace se3
     
     /// \brief Default 3D gravity vector (=(0,0,-9.81)).
     static const Eigen::Vector3d gravity981;
+
+    /// \brief Model name;
+    std::string name;
 
     /// \brief Default constructor. Builds an empty model with no joints.
     Model()
@@ -322,20 +325,15 @@ namespace se3
     inline bool check(const AlgorithmCheckerBase<D> & checker = AlgorithmCheckerBase<D>()) const
     { return checker.checkModel(*this); }
 
-    /// Multiple checks for a fusion::vector of AlgorithmCheckerBase.
-    ///
-    /// Run the check test for several conditons.
-    /// \param[in] v fusion::vector of algo checkers. The param is typically initialize with 
-    /// boost::fusion::make_list( AlgoChecker1(), AlgoChecker2(), ...)
-    /// make_list is defined in #include <boost/fusion/include/make_list.hpp>
-    /// \warning no more than 10 checkers can be added (or Model API should be extended).
-    /// \note This method is implemented in src/algo/check.hxx.
-    template<class T1,class T2,class T3,class T4,class T5,
-             class T6,class T7,class T8,class T9,class T10>
-    bool check( const boost::fusion::list<T1,T2,T3,T4,T5,T6,T7,T8,T9,T10> & checkerList ) const;
-
     /// Run check(fusion::list) with DEFAULT_CHECKERS as argument.
-    bool check() const;
+    inline bool check() const;
+    
+    /// Run checkData on data and current model.
+    ///
+    /// \param[in] data to be checked wrt *this.
+    ///
+    /// \return true if the data is valid, false otherwise.
+    inline bool check(const Data & data) const;
 
   protected:
     
@@ -359,17 +357,17 @@ namespace se3
     /// encapsulated in JointDataAccessor.
     JointDataVector joints;
     
-    /// \brief Vector of joint accelerations.
+    /// \brief Vector of joint accelerations expressed in the local frame of the joint.
     container::aligned_vector<Motion> a;
     
-    /// \brief Vector of joint accelerations due to the gravity field.
+    /// \brief Vector of joint accelerations due to the gravity field expressed in the local frame of the joint..
     container::aligned_vector<Motion> a_gf;
     
-    /// \brief Vector of joint velocities.
+    /// \brief Vector of joint velocities expressed in the local frame of the joint..
     container::aligned_vector<Motion> v;
     
     /// \brief Vector of body forces. For each body, the force represents the sum of
-    ///        all external forces acting on the body.
+    ///        all external forces acting on the body and expressed in the local frame of the joint..
     container::aligned_vector<Force> f;
     
     /// \brief Vector of absolute joint placements (wrt the world).
@@ -389,8 +387,12 @@ namespace se3
     /// \brief Vector of absolute operationnel frame placements (wrt the world).
     container::aligned_vector<SE3> oMf;
 
-    /// \brief Vector of sub-tree composite rigid body inertias, i.e. the apparent inertia of the subtree supported by the joint.
+    /// \brief Vector of sub-tree composite rigid body inertias, i.e. the apparent inertia of the subtree supported by the joint
+    ///        and expressed in the local frame of the joint..
     container::aligned_vector<Inertia> Ycrb;
+    
+    /// \brief Vector of sub-tree composite rigid body inertia time derivatives \f$ \dot{Y}_{crb}$\f. See Data::Ycrb for more details.
+    container::aligned_vector<Inertia::Matrix6> dYcrb; // TODO: change with dense symmetric matrix6
     
     /// \brief The joint space inertia matrix (a square matrix of dim model.nv).
     Eigen::MatrixXd M;
@@ -400,18 +402,23 @@ namespace se3
     
     // ABA internal data
     /// \brief Inertia matrix of the subtree expressed as dense matrix [ABA]
-    container::aligned_vector<Inertia::Matrix6> Yaba;
+    container::aligned_vector<Inertia::Matrix6> Yaba;  // TODO: change with dense symmetric matrix6
     
     /// \brief Intermediate quantity corresponding to apparent torque [ABA]
     Eigen::VectorXd u;                  // Joint Inertia
     
     // CCRBA return quantities
     /// \brief Centroidal Momentum Matrix
-    /// \note \f$ hg = Ag \dot{q}\f$ maps the joint velocity set to the centroidal momentum.
+    /// \note \f$ hg = A_g \dot{q}\f$ maps the joint velocity set to the centroidal momentum.
     Matrix6x Ag;
     
+    // dCCRBA return quantities
+    /// \brief Centroidal Momentum Matrix Time Variation
+    /// \note \f$ \dot{h_g} = A_g \ddot{q}\ + \dot{A_g}\dot{q}f$ maps the joint velocity and acceleration vectors to the time variation of the centroidal momentum.
+    Matrix6x dAg;
+    
     /// \brief Centroidal momentum quantity.
-    /// \note The centroidal momentum is expressed in the frame centered at the CoM and aligned with the inertial frame.
+    /// \note The centroidal momentum is expressed in the frame centered at the CoM and aligned with the inertial frame (i.e. the world frame).
     ///
     Force hg;
     
@@ -445,6 +452,9 @@ namespace se3
     /// \brief Jacobian of joint placements.
     /// \note The columns of J corresponds to the basis of the spatial velocities of each joint and expressed at the origin of the inertial frame. In other words, if \f$ v_{J_{i}} = S_{i} \dot{q}_{i}\f$ is the relative velocity of the joint i regarding to its parent, then \f$J = \begin{bmatrix} ^{0}X_{1} S_{1} & \cdots & ^{0}X_{i} S_{i} & \cdots & ^{0}X_{\text{nj}} S_{\text{nj}} \end{bmatrix} \f$. This Jacobian has no special meaning. To get the jacobian of a precise joint, you need to call se3::getJacobian
     Matrix6x J;
+    
+    /// \brief Derivative of the Jacobian with respect to the time.
+    Matrix6x dJ;
     
     /// \brief Vector of joint placements wrt to algorithm end effector.
     container::aligned_vector<SE3> iMf;

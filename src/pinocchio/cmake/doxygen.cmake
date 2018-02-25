@@ -87,6 +87,13 @@ MACRO(_SETUP_PROJECT_DOCUMENTATION)
         WORKING_DIRECTORY doc
         COMMENT "Generating Doxygen template files"
         )
+      ADD_CUSTOM_TARGET(generate-template-css
+        DEPENDS
+        ${CMAKE_CURRENT_BINARY_DIR}/doc/header.html
+        ${CMAKE_CURRENT_BINARY_DIR}/doc/footer.html
+        ${CMAKE_CURRENT_BINARY_DIR}/doc/doxygen.css
+        )
+      ADD_DEPENDENCIES(doc generate-template-css)
     ELSE (DOXYGEN_USE_TEMPLATE_CSS)
       FILE (COPY
         ${PROJECT_SOURCE_DIR}/cmake/doxygen/doxygen.css
@@ -175,6 +182,23 @@ MACRO(_SETUP_PROJECT_DOCUMENTATION_FINALIZE)
     ELSE()
       MESSAGE("-- Doxygen rendering: using LaTeX backend")
       SET(DOXYGEN_HEADER_NAME "header.html")
+    ENDIF()
+
+    IF(_INSTALL_DOC)
+      # Find doxytag files
+      # To ignore this list of tag files, add to doc/Doxyfile.extra.in
+      # TAGFILES =
+      STRING(REPLACE "," ";" PKG_REQUIRES "${_PKG_CONFIG_REQUIRES}")
+      FOREACH(PKG_CONFIG_STRING ${PKG_REQUIRES})
+        _PARSE_PKG_CONFIG_STRING(${PKG_CONFIG_STRING} LIBRARY_NAME PREFIX)
+        # If DOXYGENDOCDIR is specified, add a doc path.
+        IF( DEFINED ${PREFIX}_DOXYGENDOCDIR
+            AND EXISTS ${${PREFIX}_DOXYGENDOCDIR}/${LIBRARY_NAME}.doxytag)
+          FILE(RELATIVE_PATH DEP_DOCDIR ${_PKG_CONFIG_DOXYGENDOCDIR} ${${PREFIX}_DOXYGENDOCDIR})
+
+          SET(DOXYTAG_ENTRIES "${DOXYTAG_ENTRIES} \"${${PREFIX}_DOXYGENDOCDIR}/${LIBRARY_NAME}.doxytag\"=\"${DEP_DOCDIR}\"")
+        ENDIF()
+      ENDFOREACH()
     ENDIF()
 
     # Generate Doxyfile.extra.

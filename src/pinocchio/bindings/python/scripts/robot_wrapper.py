@@ -14,12 +14,10 @@
 # Pinocchio If not, see
 # <http://www.gnu.org/licenses/>.
 
-import time
-
 import libpinocchio_pywrap as se3
 import utils
-from explog import exp
-
+import time
+import os
 
 class RobotWrapper(object):
 
@@ -58,12 +56,8 @@ class RobotWrapper(object):
         self.q0 = utils.zero(self.nq)
 
     def increment(self, q, dq):
-        M = se3.SE3(se3.Quaternion(q[6, 0], q[3, 0], q[4, 0], q[5, 0]).matrix(), q[:3])
-        dM = exp(dq[:6])
-        M = M * dM
-        q[:3] = M.translation
-        q[3:7] = se3.Quaternion(M.rotation).coeffs()
-        q[7:] += dq[6:]
+        q_next = se3.integrate(self.model,q,dq)
+        q[:] = q_next[:]
 
     @property
     def nq(self):
@@ -73,14 +67,17 @@ class RobotWrapper(object):
     def nv(self):
         return self.model.nv
 
-    def com(self, q, v=None, a=None, update_kinematics=True):
+    def com(self, q=None, v=None, a=None):
+        if q is None:
+            se3.centerOfMass(self.model, self.data)
+            return data.com[0]
         if v is not None:
             if a is None:
-                se3.centerOfMass(self.model, self.data, q, v, update_kinematics)
+                se3.centerOfMass(self.model, self.data, q, v)
                 return self.data.com[0], self.data.vcom[0]
-            se3.centerOfMass(self.model, self.data, q, v, a, update_kinematics)
+            se3.centerOfMass(self.model, self.data, q, v, a)
             return self.data.com[0], self.data.vcom[0], self.data.acom[0]
-        return se3.centerOfMass(self.model, self.data, q, update_kinematics)
+        return se3.centerOfMass(self.model, self.data, q)
 
     def Jcom(self, q):
         return se3.jacobianCenterOfMass(self.model, self.data, q)
@@ -88,7 +85,7 @@ class RobotWrapper(object):
     def mass(self, q):
         return se3.crba(self.model, self.data, q)
 
-    def biais(self, q, v):
+    def bias(self, q, v):
         return se3.nle(self.model, self.data, q, v)
 
     def gravity(self, q):
@@ -103,8 +100,8 @@ class RobotWrapper(object):
         else:
             se3.forwardKinematics(self.model, self.data, q)
 
-    def position(self, q, index, update_geometry=True):
-        if update_geometry:
+    def position(self, q, index, update_kinematics=True):
+        if update_kinematics:
             se3.forwardKinematics(self.model, self.data, q)
         return self.data.oMi[index]
 
@@ -113,13 +110,34 @@ class RobotWrapper(object):
             se3.forwardKinematics(self.model, self.data, q, v)
         return self.data.v[index]
 
-    def acceleration(self, q, v, a, index, update_acceleration=True):
-        if update_acceleration:
+    def framePosition(self, q, index, update_kinematics=True):
+        if update_kinematics:
+            se3.forwardKinematics(self.model, self.data, q)
+        frame = self.model.frames[index]
+        parentPos = self.data.oMi[frame.parent]
+        return parentPos.act(frame.placement)
+
+    def frameVelocity(self, q, v, index, update_kinematics=True):
+        if update_kinematics:
+            se3.forwardKinematics(self.model, self.data, q, v)
+        frame = self.model.frames[index]
+        parentJointVel = self.data.v[frame.parent]
+        return frame.placement.actInv(parentJointVel)
+
+    def acceleration(self, q, v, a, index, update_kinematics=True):
+        if update_kinematics:
             se3.forwardKinematics(self.model, self.data, q, v, a)
         return self.data.a[index]
 
-    def jacobian(self, q, index, update_geometry=True, local_frame=True):
-        return se3.jacobian(self.model, self.data, q, index, local_frame, update_geometry)
+    def frameAcceleration(self, q, v, a, index, update_kinematics=True):
+        if update_kinematics:
+            se3.forwardKinematics(self.model, self.data, q, v, a)
+        frame = self.model.frames[index]
+        parentJointAcc = self.data.a[frame.parent]
+        return frame.placement.actInv(parentJointAcc)
+
+    def jacobian(self, q, index, update_kinematics=True, local_frame=True):
+        return se3.jacobian(self.model, self.data, q, index, local_frame, update_kinematics)
 
     def computeJacobians(self, q):
         return se3.computeJacobians(self.model, self.data, q)
@@ -129,7 +147,6 @@ class RobotWrapper(object):
             se3.updateGeometryPlacements(self.model, self.data, self.visual_model, self.visual_data, q)
         else:
             se3.updateGeometryPlacements(self.model, self.data, self.collision_model, self.collision_data, q)
-
 
     # --- ACCESS TO NAMES ----
     # Return the index of the joint whose name is given in argument.
@@ -178,10 +195,26 @@ class RobotWrapper(object):
         self.viewer.gui.createGroup(nodeName)
 
         # iterate over visuals and create the meshes in the viewer
+        from rpy import npToTuple
         for visual in self.visual_model.geometryObjects :
             meshName = self.viewerNodeNames(visual) 
             meshPath = visual.meshPath
-            self.viewer.gui.addMesh(meshName, meshPath)
+            # Check if an .osg file exists instead of the .dae version
+            filename, extension = os.path.splitext(meshPath)
+            if extension[1:] == "dae":
+              filename_osg = filename + ".osg"
+              if os.path.isfile(filename_osg):
+                meshPath = filename_osg 
+            meshTexturePath = visual.meshTexturePath
+            meshScale = visual.meshScale
+            meshColor = visual.meshColor
+            if self.viewer.gui.addMesh(meshName, meshPath):
+                self.viewer.gui.setScale(meshName, npToTuple(meshScale))
+                if visual.overrideMaterial:
+                    self.viewer.gui.setColor(meshName,npToTuple(meshColor))
+                    if meshTexturePath is not '':
+                        self.viewer.gui.setTexture(meshName,meshTexturePath)
+               
 
         # Finally, refresh the layout to obtain your first rendering.
         self.viewer.gui.refresh()
@@ -196,9 +229,8 @@ class RobotWrapper(object):
 
         for visual in self.visual_model.geometryObjects :
             M = self.visual_data.oMg[self.visual_model.getGeometryId(visual.name)]
-            pinocchioConf = utils.se3ToXYZQUAT(M)
-            viewerConf = utils.XYZQUATToViewerConfiguration(pinocchioConf)
-            self.viewer.gui.applyConfiguration(self.viewerNodeNames(visual), viewerConf)
+            conf = utils.se3ToXYZQUAT(M)
+            self.viewer.gui.applyConfiguration(self.viewerNodeNames(visual), conf)
 
         self.viewer.gui.refresh()
 

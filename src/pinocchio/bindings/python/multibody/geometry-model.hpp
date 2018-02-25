@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2016 CNRS
+// Copyright (c) 2015-2017 CNRS
 //
 // This file is part of Pinocchio
 // Pinocchio is free software: you can redistribute it
@@ -18,7 +18,6 @@
 #ifndef __se3_python_geometry_model_hpp__
 #define __se3_python_geometry_model_hpp__
 
-#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <eigenpy/memory.hpp>
 
 #include "pinocchio/bindings/python/utils/eigen_container.hpp"
@@ -81,15 +80,11 @@ namespace se3
         ;
       }
       
+      
+
       /* --- Expose --------------------------------------------------------- */
       static void expose()
       {
-        
-        bp::enum_<GeometryType>("GeometryType")
-        .value("VISUAL",VISUAL)
-        .value("COLLISION",COLLISION)
-        ;
-        
         bp::class_<GeometryModel>("GeometryModel",
                                   "Geometry model (const)",
                                   bp::no_init)

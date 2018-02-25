@@ -101,7 +101,7 @@ struct GeometryObject
   /// \brief Index of the parent joint
   JointIndex parentJoint;
 
-  /// \brief The actual cloud of points representing the collision mesh of the object
+  /// \brief The actual cloud of points representing the collision mesh of the object after scaling.
   boost::shared_ptr<fcl::CollisionGeometry> fcl;
 
   /// \brief Position of geometry object in parent joint frame
@@ -110,15 +110,38 @@ struct GeometryObject
   /// \brief Absolute path to the mesh file
   std::string meshPath;
 
+  /// \brief Scaling vector applied to the fcl object.
+  Eigen::Vector3d meshScale;
+
+  /// \brief Decide whether to override the Material.
+  bool overrideMaterial;
+
+  /// \brief RGBA color value of the mesh.
+  Eigen::Vector4d meshColor;
+
+  /// \brief Absolute path to the mesh texture file.
+  std::string meshTexturePath;
+
+
+
   GeometryObject(const std::string & name, const FrameIndex parentF,
-                 const JointIndex parentJ, const boost::shared_ptr<fcl::CollisionGeometry> & collision,
-                 const SE3 & placement, const std::string & meshPath)
+                 const JointIndex parentJ,
+                 const boost::shared_ptr<fcl::CollisionGeometry> & collision,
+                 const SE3 & placement, const std::string & meshPath = "",
+                 const Eigen::Vector3d & meshScale = Eigen::Vector3d::Ones(),
+                 const bool overrideMaterial = false,
+                 const Eigen::Vector4d & meshColor = Eigen::Vector4d::Zero(),
+                 const std::string & meshTexturePath = "")
                 : name(name)
                 , parentFrame(parentF)
                 , parentJoint(parentJ)
                 , fcl(collision)
                 , placement(placement)
                 , meshPath(meshPath)
+                , meshScale(meshScale)
+                , overrideMaterial(overrideMaterial)
+                , meshColor(meshColor)
+                , meshTexturePath(meshTexturePath)
   {}
 
   GeometryObject & operator=(const GeometryObject & other)
@@ -129,6 +152,10 @@ struct GeometryObject
     fcl                 = other.fcl;
     placement           = other.placement;
     meshPath            = other.meshPath;
+    meshScale           = other.meshScale;
+    overrideMaterial    = other.overrideMaterial;
+    meshColor           = other.meshColor;
+    meshTexturePath     = other.meshTexturePath;
     return *this;
   }
 
