@@ -10,6 +10,7 @@
 #
 # If SET_BASH is used, the pkg-config path is added to the .bashrc (needed to
 # be run at least the first time)
+#
 
 
 # Add the path for pkg-config. It is important for it to be at the end of the
