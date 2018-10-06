@@ -26,12 +26,18 @@ The oscr-deps package can be installed as:
     ./install-deps  your_prefix  SET_BASH
 
 where *your_prefix* is the PATH where the third-party libraries will be
-installed (for example: ~/devel/control/install), and *SET_BASH* is an optional
-parameter that must be included only the very first time the instruction is
-run.
+installed ), and *SET_BASH* is an optional parameter that must be included only
+the very first time the instruction is run since it will add the *pkg-config*
+to the *.bashrc*. For example, the following command:
 
-Note: When *SET_BASH* is used, the *pkg-config* path is added to the
-*.bashrc*. When *SET_BASH* is omitted, nothing will be copied to *.bashrc*.
+    ./install-deps  ~/devel/control/install  SET_BASH
+
+will install the dependencies to ~/devel/control/install. When *SET_BASH* is
+omitted, nothing will be added to *.bashrc*. In the above example, when
+recompiling, the *SET_BASH* should be ommited.
+
+Note: it might be useful to check the output of the installation to see if
+there has been any issue.
 
 
 References
