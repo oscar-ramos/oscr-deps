@@ -1,6 +1,8 @@
 *oscr-deps* - Third-party (external) software needed for the
 [*oscr*](https://github.com/oscar-ramos/oscr) library
 
+[![Build Status](https://travis-ci.org/oscar-ramos/oscr-deps.svg?branch=master)](https://travis-ci.org/oscar-ramos/oscr-deps)
+
 Introduction
 ============
 
@@ -21,7 +23,10 @@ original library source.
 Setup: Building and Installation
 ================================
 
-The oscr-deps package can be installed as:
+Before installing this package, you must ensure that you have the *eigen3* and
+*boost* libraries available in your system. You must install them in case they are not available. For ubuntu 16.04, this can be done using the commands sudo apt-get install libeigen3-dev libboost-all-dev.
+
+The oscr-deps package can be then installed as:
 
     ./install-deps  your_prefix  SET_BASH
 
