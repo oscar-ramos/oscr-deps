@@ -24,7 +24,7 @@ Setup: Building and Installation
 ================================
 
 Before installing this package, you must ensure that you have the *eigen3* and
-*boost* libraries available in your system. You must install them in case they are not available. For ubuntu 16.04, this can be done using the commands sudo apt-get install libeigen3-dev libboost-all-dev.
+*boost* libraries available in your system. You must install them in case they are not available. For Ubuntu 16.04, this can be done using the command: *sudo apt-get install libeigen3-dev libboost-all-dev*.
 
 The oscr-deps package can be then installed as:
 
