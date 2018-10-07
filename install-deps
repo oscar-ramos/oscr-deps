@@ -24,6 +24,9 @@ fi
 
 # Install rbdl
 cd src/rbdl; mkdir -p build; cd build
+echo "$(tput setaf 2)==================================="
+echo "Configuring rbdl 2.5.0"
+echo "===================================$(tput sgr 0)"
 cmake .. -DRBDL_BUILD_ADDON_URDFREADER=ON -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
 echo "$(tput setaf 2)==================================="
 echo "Compiling and Installing rbdl 2.5.0"
@@ -33,6 +36,9 @@ cd ../../..
 
 # Install pinocchio
 cd src/pinocchio; mkdir -p build; cd build
+echo "$(tput setaf 2)==================================="
+echo "Configuring pinocchio"
+echo "===================================$(tput sgr 0)"
 cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
 echo "$(tput setaf 2)==================================="
 echo "Compiling and Installing pinocchio"
@@ -42,6 +48,9 @@ cd ../../..
 
 # Install qpOASES
 cd src/qpOASES-3.2.0; mkdir -p build; cd build
+echo "$(tput setaf 2)==================================="
+echo "Configuring qpoases 3.2.0"
+echo "===================================$(tput sgr 0)"
 cmake .. -DCMAKE_INSTALL_PREFIX=$1 -DCMAKE_BUILD_TYPE=RELEASE
 echo "$(tput setaf 2)==================================="
 echo "Compiling and Installing qpOASES 3.2.0"
